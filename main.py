@@ -31,10 +31,7 @@ translations = {
         "upcoming_title": "📅 **Найближчі дні народження:**\n\n",
         "upcoming_item": "• {name} - {date} ({days} дн.)",
         "no_upcoming": "Найближчих днів народження немає.",
-        "back": "Назад",
-        "main_menu": "🎂 **Головне меню**\n\nОбери дію нижче:",
-        "settings_title": "⚙️ **Налаштування**\n\nОбери мову бота:",
-        "choose_action": "Оберіть дію:"
+        "back": "Назад"
     },
     "en": {
         "welcome_new": "✅ **Hello!** I will remind you about birthdays in our group every morning at 07:00.",
@@ -49,10 +46,7 @@ translations = {
         "upcoming_title": "📅 **Upcoming Birthdays:**\n\n",
         "upcoming_item": "• {name} - {date} ({days} days)",
         "no_upcoming": "No upcoming birthdays.",
-        "back": "Back",
-        "main_menu": "🎂 **Main menu**\n\nChoose an option below:",
-        "settings_title": "⚙️ **Settings**\n\nChoose bot language:",
-        "choose_action": "Choose an action:"
+        "back": "Back"
     }
 }
 
@@ -168,12 +162,6 @@ def create_main_keyboard(lang):
     keyboard.add(types.InlineKeyboardButton(t("settings", lang), callback_data="settings"))
     return keyboard
 
-def create_upcoming_keyboard(lang):
-    """Клавіатура для екрану «Найближчі дні народження» з кнопкою Назад"""
-    keyboard = types.InlineKeyboardMarkup(row_width=1)
-    keyboard.add(types.InlineKeyboardButton("⬅️ " + t("back", lang), callback_data="back"))
-    return keyboard
-
 def create_settings_keyboard(lang):
     keyboard = types.InlineKeyboardMarkup(row_width=2)
     uk_text = "🇺🇦 Українська" if lang == "uk" else "🇺🇦 Ukrainian"
@@ -186,17 +174,8 @@ def create_settings_keyboard(lang):
     
     keyboard.add(types.InlineKeyboardButton(uk_text, callback_data="lang_uk"))
     keyboard.add(types.InlineKeyboardButton(en_text, callback_data="lang_en"))
-    keyboard.add(types.InlineKeyboardButton("⬅️ " + t("back", lang), callback_data="back"))
+    keyboard.add(types.InlineKeyboardButton(t("back", lang), callback_data="back"))
     return keyboard
-
-def create_main_reply_keyboard(lang):
-    """Головне меню кнопками під повідомленням"""
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.row(
-        types.KeyboardButton("📅 " + t("upcoming_birthdays", lang)),
-        types.KeyboardButton("⚙️ " + t("settings", lang))
-    )
-    return markup
 
 # --- ОБРОБКА КОМАНД ---
 @bot.message_handler(commands=['start'])
@@ -210,7 +189,6 @@ def send_welcome(message):
         text = t("welcome_existing", lang)
     
     bot.reply_to(message, text, parse_mode="Markdown", reply_markup=create_main_keyboard(lang))
-    bot.send_message(chat_id, t("choose_action", lang), reply_markup=create_main_reply_keyboard(lang))
 
 @bot.message_handler(commands=['check'])
 def check_today(message):
@@ -237,14 +215,13 @@ def handle_callback(call):
             message_id=call.message.message_id,
             text=upcoming,
             parse_mode="Markdown",
-            reply_markup=create_upcoming_keyboard(lang)
+            reply_markup=create_main_keyboard(lang)
         )
     elif call.data == "settings":
         bot.edit_message_text(
             chat_id=chat_id,
             message_id=call.message.message_id,
-            text=t("settings_title", lang),
-            parse_mode="Markdown",
+            text=t("settings", lang),
             reply_markup=create_settings_keyboard(lang)
         )
     elif call.data == "lang_uk":
@@ -336,57 +313,6 @@ def send_birthday_message():
                 print(f"Не вдалося надіслати користувачу {user_id}: {e}")
     else:
         print(f"Сьогодні ({today}) тихо.")
-# --- КОМАНДА /up: НАЙБЛИЖЧІ ДНІ НАРОДЖЕННЯ ---
-@bot.message_handler(commands=['up'])
-def handle_upcoming(message):
-    chat_id = message.chat.id
-    lang = get_user_language(chat_id)
-    text = get_upcoming_birthdays(lang)
-    bot.send_message(chat_id, text, parse_mode="Markdown", reply_markup=create_upcoming_keyboard(lang))
-
-# --- КОМАНДА /settings: НАЛАШТУВАННЯ ---
-@bot.message_handler(commands=['settings'])
-def handle_settings(message):
-    chat_id = message.chat.id
-    lang = get_user_language(chat_id)
-    bot.send_message(chat_id, t("settings_title", lang), parse_mode="Markdown", reply_markup=create_settings_keyboard(lang))
-
-# --- ОБРОБКА КНОПОК ГОЛОВНОГО МЕНЮ (reply) ---
-def is_back_button(message, lang):
-    return message.text and message.text.strip() == "⬅️ " + t("back", lang)
-
-def is_upcoming_button(message, lang):
-    return message.text and message.text.strip() == "📅 " + t("upcoming_birthdays", lang)
-
-def is_settings_button(message, lang):
-    return message.text and message.text.strip() == "⚙️ " + t("settings", lang)
-
-@bot.message_handler(func=lambda m: m.text and (
-    m.text.strip() in ["⬅️ Назад", "⬅️ Back"] or
-    m.text.strip().startswith("⬅️ ")
-))
-def handle_back(message):
-    chat_id = message.chat.id
-    lang = get_user_language(chat_id)
-    bot.send_message(chat_id, t("main_menu", lang), parse_mode="Markdown", reply_markup=create_main_keyboard(lang))
-    bot.send_message(chat_id, t("choose_action", lang), reply_markup=create_main_reply_keyboard(lang))
-
-@bot.message_handler(func=lambda m: m.text and m.text.strip().startswith("📅 "))
-def handle_reply_upcoming(message):
-    chat_id = message.chat.id
-    lang = get_user_language(chat_id)
-    if not is_upcoming_button(message, lang):
-        return
-    text = get_upcoming_birthdays(lang)
-    bot.send_message(chat_id, text, parse_mode="Markdown", reply_markup=create_upcoming_keyboard(lang))
-
-@bot.message_handler(func=lambda m: m.text and m.text.strip().startswith("⚙️ "))
-def handle_reply_settings(message):
-    chat_id = message.chat.id
-    lang = get_user_language(chat_id)
-    if not is_settings_button(message, lang):
-        return
-    bot.send_message(chat_id, t("settings_title", lang), parse_mode="Markdown", reply_markup=create_settings_keyboard(lang))
 
 # --- ЗАПУСК ПОТОКІВ ---
 def schedule_checker():
@@ -398,7 +324,7 @@ if __name__ == "__main__":
     # Запускаємо Flask keep-alive сервер
     keep_alive()
     
-    # Усі нагадування про дні народження приходять о 07:00 щодня
+    # Плануємо час розсилки о 07:00
     schedule.every().day.at("07:00").do(send_birthday_message)
     
     # Запускаємо планувальник в окремому потоці
